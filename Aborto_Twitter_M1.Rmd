@@ -6,7 +6,6 @@ output:
   html_document: default
 ---
 
-# Trabajo Práctico N°1
 ## Análisis de las bases Twitter y Usuarios
 
 ### 1 - Introducción
