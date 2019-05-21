@@ -1,0 +1,444 @@
+---
+title: 'Mentoría: Twitter_Aborto_TP1'
+author: "Aballay, Avedaño, Garnica"
+date: "20/5/2019"
+output:
+  html_document: default
+---
+
+# Trabajo Práctico N°1
+## Análisis de las bases Twitter y Usuarios
+
+### 1 - Introducción
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(psych)
+library(GGally)
+library(knitr)
+
+options(scipen=999)
+
+tweets_junio <- read.csv("C:/Users/User02/Google Drive/DiploDatos/Mentoria/tweets_junio.csv", 
+                         encoding = 'latin1')
+
+tweets_ago <- read.csv("C:/Users/User02/Google Drive/DiploDatos/Mentoria/tweets_agosto.csv", 
+                         encoding = 'latin1')
+
+tweets_junio$base <- "06_Junio"
+tweets_ago$base <- "08_Agosto"
+tweets_ago$posicion <- NA
+colnames(tweets_ago)[5]<-"full_text"
+
+tweets <- rbind(tweets_ago, tweets_junio)
+```
+
+### Análisis de Tweets
+
+```{r include=FALSE}
+tweets$created_at <- as.character(tweets$created_at)
+
+Sys.setlocale("LC_TIME", "English")
+tweets$fecha <- as.POSIXct(tweets$created_at, format="%a %b %d %H:%M:%S +0000 %Y", tz="GMT")
+tweets$dia <- as.Date(tweets$fecha)
+```
+
+Estadisticos de junio
+
+```{r echo=FALSE}
+#Estadisticos junio
+summary(tweets[tweets$base == "06_Junio", c(3, 4, 6,7,12, 14)])
+```
+
+Estadisticos de agosto
+```{r echo=FALSE}
+summary(tweets[tweets$base == "08_Agosto", c(3, 4, 6,7,12, 14)])
+```
+
+Duplicados
+```{r include=FALSE}
+
+duplicados <- tweets %>%
+  group_by(id) %>%
+  mutate(cant = n()) %>%
+  filter(cant > 1)
+
+dup2 <- tweets %>%
+  group_by_at(names(tweets)[-grep("posicion", names(tweets))]) %>%
+  mutate(cant = n()) %>%
+  filter(cant > 1)
+```
+
+```{r echo=FALSE}
+length(unique(duplicados$id))
+length(unique(dup2$id))
+```
+
+```{r echo=FALSE}
+ggplot(tweets[tweets$base == "06_Junio", ], aes(x=dia)) +
+  geom_bar() + 
+  scale_x_date(breaks = unique(tweets$dia)) +
+  xlab("Fecha de creación del Tweet") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5))
+```
+
+```{r echo=FALSE}
+td <- tweets %>%
+  group_by(dia) %>%
+  summarise(cant = n(),
+            base = first(base))
+```
+
+```{r echo=FALSE}
+summary(td$cant)
+```
+
+```{r echo=FALSE}
+ggplot(td, aes(base, cant)) +
+  geom_boxplot(fill = "grey65", width=0.1, show.legend = F) +
+  theme_classic() 
+```
+
+Favoritos - Me gusta
+
+```{r echo=FALSE}
+tweets %>%
+  group_by(base) %>%
+  summarise(cant_tw = n(),
+            min = min(favorite_count),
+            mediana = median(favorite_count),
+            media = mean(favorite_count),
+            stdv = sd(favorite_count))
+```
+
+Quantiles cantidad de favoritos que tiene el tweet - Junio
+
+```{r echo=FALSE}
+
+quantile(tweets[tweets$base == "06_Junio", "favorite_count"], 
+         probs = c(0.1, 0.25, 0.50, 0.75, 0.90))
+```
+
+Quantiles cantidad de favoritos que tiene el tweet - Agosto
+
+```{r echo=FALSE}
+
+quantile(tweets[tweets$base == "08_Agosto", "favorite_count"], 
+         probs = c(0.1, 0.25, 0.50, 0.75, 0.90))
+```
+
+porcentaje de tw con al menos 1 me gusta:
+
+```{r echo=FALSE}
+nrow(tweets[tweets$favorite_count > 0, ])/nrow(tweets)
+```
+
+```{r, echo=FALSE}
+
+g0 <- ggplot(tweets, aes(base, favorite_count)) +
+        geom_boxplot(fill = "grey65", width=0.1, show.legend = F) +
+        theme_classic()
+g0
+```
+
+sin outliers
+```{r echo=FALSE}
+ylim1 = boxplot.stats(tweets$favorite_count)$stats[c(1, 5)]
+
+g0 + coord_cartesian(ylim = ylim1)
+
+```
+
+porcentaje de tw con al menos 1 retw:
+
+```{r echo=FALSE}
+tweets %>%
+  group_by(base) %>%
+  summarise(cant_tw = n(),
+            min = min(retweet_count),
+            mediana = median(retweet_count),
+            media = mean(retweet_count),
+            stdv = sd(retweet_count))
+```
+
+
+```{r echo=FALSE}
+quantile(tweets[tweets$base == "06_Junio", "retweet_count"], 
+         probs = c(0.1, 0.25, 0.50, 0.75, 0.90))
+
+quantile(tweets[tweets$base == "08_Agosto", "retweet_count"], 
+         probs = c(0.1, 0.25, 0.50, 0.75, 0.90))
+
+nrow(tweets[tweets$retweet_count > 0, ])/nrow(tweets)
+```
+
+```{r echo=FALSE}
+g0 <- ggplot(tweets, aes(base, retweet_count)) +
+        geom_boxplot(fill = "grey65", width=0.1, show.legend = F) +
+        theme_classic()
+g0
+```
+
+sin outliers
+
+```{r echo=FALSE}
+ylim1 = boxplot.stats(tweets$retweet_count)$stats[c(1, 5)]
+
+g0 + coord_cartesian(ylim = ylim1)
+```
+
+Cantidad de Tw por usuario
+
+```{r echo=FALSE}
+tu <- tweets %>%
+  group_by(user_id) %>%
+  summarise(cant = n())
+
+nrow(tu)
+summary(tu$cant)
+```
+
+```{r echo=FALSE}
+ggplot(tu, aes(x=cant)) +
+  geom_histogram(aes(y = ..density..), bins = 100) + 
+  xlab("usuarios") +
+  theme_classic() 
+```
+
+```{r echo=FALSE}
+g0 <- ggplot(tu, aes("Tweets por usuario", cant)) +
+  geom_boxplot(fill = "grey65", width=0.1, show.legend = F) +
+  theme_classic()
+g0
+```
+sin outliers
+
+```{r echo=FALSE}
+ylim1 = boxplot.stats(tu$cant)$stats[c(1, 5)]
+
+g0 + coord_cartesian(ylim = ylim1)
+
+```
+
+### Análisis de Usuarios
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+us_junio <- read.csv("C:/Users/User02/Google Drive/DiploDatos/Mentoria/users_junio.csv", 
+                     encoding = 'utf-16')
+
+us_agosto <- read.csv("C:/Users/User02/Google Drive/DiploDatos/Mentoria/users_agosto.csv", 
+                      encoding = 'utf-16')
+
+us_junio$base <- "06_Junio"
+us_agosto$base <- "08_Agosto"
+
+us <- rbind(us_junio, us_agosto)
+
+```
+
+usuarios unicos en junio y agosto 
+
+```{r echo=FALSE}
+length(unique(us$id))
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+us_tw <- us %>%
+  group_by(id, base) %>%
+  summarise(tw = n())
+
+us_tw <- spread(us_tw, base, tw)
+
+#Usuarios que twitearon solo en junio
+#Usuarios que twitearon solo en agosto
+#Usuarios que twitearon ambos meses
+
+us_tw$tipo <- ifelse(is.na(us_tw$`06_Junio`)!=T & is.na(us_tw$`08_Agosto`)==T, '1', 0)
+us_tw$tipo <- ifelse(is.na(us_tw$`06_Junio`)==T & is.na(us_tw$`08_Agosto`)!=T, '2', us_tw$tipo)
+us_tw$tipo <- ifelse(is.na(us_tw$`06_Junio`)!=T & is.na(us_tw$`08_Agosto`)!=T, '3', us_tw$tipo)
+```
+
+```{r echo=FALSE}
+
+us_tw %>%
+  group_by(tipo) %>%
+  summarise(Cant = n(),
+            Pct = n()/nrow(us_tw)*100)
+```
+
+```{r echo=FALSE}
+ggplot(us_tw, aes(x=tipo)) +
+  geom_bar() + 
+  scale_x_discrete(labels = 
+                     c("Tw solo en Junio", "Tw solo en agosto", "Tw en junio y agosto")) +
+  theme_classic() +
+  theme(axis.text.x = element_text(hjust = 0.5, vjust = 0.5))
+```
+
+Tweets por usuario
+
+```{r include=FALSE}
+
+usu <- us[!duplicated(us$id), c(1:11)]
+usu <- merge(usu, tu, by.x = "id", by.y = "user_id", all.x = T)
+
+usu$created_at <- as.character(usu$created_at)
+
+Sys.setlocale("LC_TIME", "English")
+usu$fecha <- as.POSIXct(usu$created_at, format="%a %b %d %H:%M:%S +0000 %Y", tz="GMT")
+usu$dia <- as.Date(usu$fecha)
+usu$year <- format(usu$dia, "%Y")
+usu$mes <- format(usu$dia, "%m")
+```
+
+```{r echo=FALSE}
+summary(usu[, c(4,5,7,8,11,12,15)])
+```
+
+Cantidad de Tw escritos o retwiteados
+
+```{r echo=FALSE}
+
+u0 <- ggplot(usu, aes("Cant. de Tw escritos/rt", statuses_count)) +
+        geom_boxplot(fill = "grey65", width=0.1, show.legend = F) + 
+        xlab("") +
+        theme_classic() 
+u0
+```
+
+Sin outliers
+```{r echo=FALSE}
+ylim1 = boxplot.stats(usu$statuses_count)$stats[c(1, 5)]
+
+u0 + coord_cartesian(ylim = ylim1)
+```
+
+Cantidad de seguidos
+
+```{r echo=FALSE}
+
+quantile(usu$friends_count, probs = c(0.50, 0.75, 0.90,0.95, 0.99))
+```
+
+```{r echo=FALSE}
+g0 <- ggplot(usu, aes("Cantidad de seguidos", friends_count)) +
+  geom_boxplot(fill = "grey65", width=0.1, show.legend = F) +
+  xlab("") +
+  theme_classic()
+
+g0
+
+```
+
+sin outliers
+
+```{r echo=FALSE}
+ylim1 = boxplot.stats(usu$friends_count)$stats[c(1, 5)]
+
+g0 + coord_cartesian(ylim = ylim1)
+
+```
+
+## Fecha de creación de la cuenta
+
+```{r echo=FALSE}
+ggplot(usu, aes(x=year)) +
+  geom_bar()+ 
+  scale_x_discrete(labels = usu$year,
+                   breaks = usu$year) +
+  xlab("Año de creación de la cuenta") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5))
+
+```
+
+cuentas creadas en 2018
+
+```{r include=FALSE}
+c2018 <- usu[usu$year == "2018", ]
+c0608 <- c2018[c2018$mes %in% c("06", "07", "08"), ]
+
+```
+
+```{r echo=FALSE}
+ggplot(c2018, aes(x=mes)) +
+  geom_bar()+ 
+  scale_x_discrete(labels = c2018$mes,
+                   breaks = c2018$mes) +
+  xlab("Mes de creación de la cuenta") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5))
+```
+
+cuentas creadas en mayo, junio y agosto
+
+```{r echo=FALSE}
+ggplot(c0608, aes(x=dia)) +
+  geom_bar()+ 
+  scale_x_date(labels = c0608$dia,
+               breaks = c0608$dia) +
+  xlab("Día de creación de la cuenta") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 0.5, vjust = 0.5))
+```
+
+
+## ANALISIS DE CORRELACIÓN
+
+```{r include=FALSE}
+#catidaad de tw y año de creacion
+usu$ant_cuenta <- difftime(as.Date("2019-05-01"), usu$dia, units = "days")
+```
+
+Correlación antiguedad de la cuenta y cantidad de tw
+```{r echo=FALSE}
+cor(usu$cant, as.numeric(usu$ant_cuenta))
+```
+
+```{r echo=FALSE}
+p <- ggplot(usu, aes(cant, as.numeric(ant_cuenta)))
+p + geom_point(aes(colour = factor(verified)))
+```
+
+Correlcion entre cantidad de tw y seguidores
+
+```{r echo=FALSE}
+cor(usu$cant, as.numeric(usu$followers_count))
+```
+
+```{r echo=FALSE}
+p <- ggplot(usu, aes(cant, followers_count))
+p + geom_point(aes(colour = factor(verified)))
+```
+
+Matriz de correlación
+
+```{r include=FALSE}
+usu$ant_cuenta <- as.numeric(usu$ant_cuenta)
+```
+
+```{r echo=FALSE}
+corr.test(usu[, c(17,4,5,7,8,12)], use="complete")
+```
+
+Test de wilcox
+
+```{r echo=FALSE}
+usu %>%
+  group_by(verified) %>%
+  summarise(n = n(),
+            min = min(cant),
+            max = max(cant),
+            prom = mean(cant),
+            sd = sd(cant))
+```
+
+```{r echo=FALSE}
+wilcox.test(cant~verified,data=usu)
+```
+

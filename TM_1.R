@@ -119,4 +119,8 @@ us_junio$year <- format(us_junio$dia, "%Y")
 
 summary(us_junio[, c(4,5,7,8,11,12,15)])
 
+### describir usuarios
+
+
+
                  
